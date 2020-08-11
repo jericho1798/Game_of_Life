@@ -1,0 +1,33 @@
+# Project exclude paths
+/.gradle/
+/Game of Life/task/build/
+/Game of Life/task/out/
+/Game of Life/task/out/production/classes/
+/Problems/Calculate the number of distinct characters/out/
+/Problems/Calculate the number of distinct characters/out/production/classes/
+/Problems/Converting and multiplying/out/
+/Problems/Converting and multiplying/out/production/classes/
+/Problems/Creating a closure/out/
+/Problems/Creating a closure/out/production/classes/
+/Problems/Geometric cube/out/
+/Problems/Geometric cube/out/production/classes/
+/Problems/Getting current thread info/out/
+/Problems/Getting current thread info/out/production/classes/
+/Problems/Return empty string when argument is null/out/
+/Problems/Return empty string when argument is null/out/production/classes/
+/Problems/Spiral/out/
+/Problems/Spiral/out/production/classes/
+/Problems/String processor/out/
+/Problems/String processor/out/production/classes/
+/Problems/String reverser/out/
+/Problems/String reverser/out/production/classes/
+/Problems/Summing with threads/out/
+/Problems/Summing with threads/out/production/classes/
+/Problems/Symmetric matrix/out/
+/Problems/Symmetric matrix/out/production/classes/
+/Problems/Ternary predicate/out/
+/Problems/Ternary predicate/out/production/classes/
+/Problems/VeganPizza/out/
+/Problems/VeganPizza/out/production/classes/
+/Problems/Writing a thread for printing numbers/out/
+/Problems/Writing a thread for printing numbers/out/production/classes/

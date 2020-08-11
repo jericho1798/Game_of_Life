@@ -1,0 +1,510 @@
+type: edu
+custom_name: stage4
+files:
+- name: src/life/Main.java
+  visible: true
+  text: |
+    package life;
+
+    public class Main {
+        public static void main(String[] args) {
+            System.out.println("Hello World!");
+        }
+    }
+  learner_created: false
+- name: test/GameOfLifeTest.java
+  visible: false
+  text: |2
+
+    import common.GameOfLifeStage4Test;
+
+    public class GameOfLifeTest extends GameOfLifeStage4Test {
+
+    }
+  learner_created: false
+- name: test/common/CheckResultUtil.kt
+  visible: false
+  text: |
+    package common
+
+
+    import org.hyperskill.hstest.v6.testcase.CheckResult
+
+    operator fun CheckResult.component1(): Boolean = isCorrect
+    operator fun CheckResult.component2(): String? = feedback
+
+    fun fail(message: String) = CheckResult(false, message)
+  learner_created: false
+- name: test/common/ClueWithChecker.kt
+  visible: false
+  text: |
+    package common
+
+
+    import org.hyperskill.hstest.v6.testcase.CheckResult
+    import org.hyperskill.hstest.v6.testcase.TestCase
+
+    sealed class ClueWithChecker(val input: String) {
+        fun toTestCase(): TestCase<ClueWithChecker> {
+            return TestCase<ClueWithChecker>().setInput(input).setAttach(this)
+        }
+    }
+
+    class ClueWithPredefinedFeedbackChecker(
+            val predefinedFeedback: String,
+            input: String,
+            val checker: (String) -> Boolean
+    ) : ClueWithChecker(input)
+
+    class ClueWithDynamicFeedbackChecker(
+            input: String,
+            val checker: (String) -> CheckResult
+    ) : ClueWithChecker(input)
+
+    fun createPredefinedFeedbackTest(
+            feedback: String,
+            input: String = "",
+            checker: (String) -> Boolean
+    ): TestCase<ClueWithChecker> {
+        return ClueWithPredefinedFeedbackChecker(
+                predefinedFeedback = feedback,
+                input = input,
+                checker = checker
+        ).toTestCase()
+    }
+
+    fun createDynamicFeedbackTest(input: String = "", checker: (String) -> CheckResult): TestCase<ClueWithChecker> {
+        return ClueWithDynamicFeedbackChecker(
+                input = input,
+                checker = checker
+        ).toTestCase()
+    }
+
+    fun checkClueWithCheckerTest(reply: String, clue: ClueWithChecker): CheckResult {
+        return try {
+            when (clue) {
+                is ClueWithDynamicFeedbackChecker -> clue.checker(reply)
+                is ClueWithPredefinedFeedbackChecker -> CheckResult(clue.checker(reply), clue.predefinedFeedback)
+            }
+        } catch (e: AssertionError) {
+            if (clue is ClueWithPredefinedFeedbackChecker) {
+                fail(clue.predefinedFeedback)
+            } else {
+                CheckResult.FALSE
+            }
+        }
+    }
+  learner_created: false
+- name: test/common/GameOfLifeCommonTest.kt
+  visible: false
+  text: |
+    package common
+
+
+    import org.assertj.swing.fixture.JLabelFixture
+    import org.hyperskill.hstest.v6.testcase.CheckResult
+
+    fun checkLabelForInteger(labelRequirements: ComponentRequirements<JLabelFixture>): CheckResult {
+        val label = labelRequirements.requireExistingComponent()
+
+        val labelDigits = label.text().trim { !it.isDigit() }
+
+        if (labelDigits.toIntOrNull() == null) {
+            return fail("The '${labelRequirements.name}' label doesn't contain an integer.")
+        }
+
+        return CheckResult.TRUE
+    }
+  learner_created: false
+- name: test/common/GameOfLifeStage4Test.kt
+  visible: false
+  text: |
+    package common
+
+
+    import org.assertj.swing.fixture.JLabelFixture
+    import org.hyperskill.hstest.v6.stage.SwingTest
+    import org.hyperskill.hstest.v6.testcase.CheckResult
+    import org.hyperskill.hstest.v6.testcase.TestCase
+    import life.GameOfLife
+
+    abstract class GameOfLifeStage4Test : SwingTest<ClueWithChecker>(GameOfLife()) {
+
+        override fun generate(): List<TestCase<ClueWithChecker>> {
+            val generationLabel = ComponentRequirements("GenerationLabel", isEnabled = true) { window.label(it) }
+            val aliveLabel = ComponentRequirements("AliveLabel", isEnabled = true) { window.label(it) }
+
+            return frameTests(::frame) +
+                    existenceTests(generationLabel, aliveLabel) +
+                    componentsAreEnabledTests(generationLabel, aliveLabel) +
+                    stage4Tests(
+                            generationLabelRequirements = generationLabel,
+                            aliveLabelRequirements = aliveLabel
+                    )
+        }
+
+        override fun check(reply: String, clue: ClueWithChecker): CheckResult {
+            return checkClueWithCheckerTest(reply = reply, clue = clue)
+        }
+    }
+
+    fun stage4Tests(
+            generationLabelRequirements: ComponentRequirements<JLabelFixture>,
+            aliveLabelRequirements: ComponentRequirements<JLabelFixture>
+    ): List<TestCase<ClueWithChecker>> {
+        return listOf(
+                createDynamicFeedbackTest {
+                    with(checkLabelForInteger(generationLabelRequirements)) {
+                        if (!this.isCorrect) {
+                            return@createDynamicFeedbackTest this
+                        }
+                    }
+                    with(checkLabelForInteger(aliveLabelRequirements)) {
+                        if (!this.isCorrect) {
+                            return@createDynamicFeedbackTest this
+                        }
+                    }
+
+                    return@createDynamicFeedbackTest CheckResult.TRUE
+                }
+        )
+    }
+  learner_created: false
+- name: test/common/UiTestsGenerators.kt
+  visible: false
+  text: |
+    package common
+
+
+    import org.assertj.swing.fixture.AbstractJComponentFixture
+    import org.hyperskill.hstest.v6.stage.SwingTest
+    import org.hyperskill.hstest.v6.testcase.TestCase
+    import javax.swing.JFrame
+
+    fun frameTests(frameGetter: () -> JFrame): List<TestCase<ClueWithChecker>> {
+        return listOf(
+                createPredefinedFeedbackTest("Window is not visible") { frameGetter().isVisible }
+        )
+    }
+
+    class ComponentRequirements<ComponentType : AbstractJComponentFixture<*, *, *>>(
+            val name: String,
+            val isEnabled: Boolean,
+            private val componentFinder: (String) -> ComponentType?
+    ) {
+        val suitableComponent: ComponentType? by lazy { componentFinder(name) }
+    }
+
+    fun existenceTests(vararg components: ComponentRequirements<*>): List<TestCase<ClueWithChecker>> {
+        fun generateExistenceTest(requirements: ComponentRequirements<*>): TestCase<ClueWithChecker> {
+            return createPredefinedFeedbackTest("No suitable component with name '${requirements.name}' is found") {
+                SwingTest.checkExistence { requirements.suitableComponent }
+            }
+        }
+
+        return components.map(::generateExistenceTest)
+    }
+
+    fun componentsAreEnabledTests(vararg components: ComponentRequirements<*>): List<TestCase<ClueWithChecker>> {
+        fun generateIsEnabledTest(requirements: ComponentRequirements<*>): TestCase<ClueWithChecker> {
+            val (desiredState, stateChecker) = if (requirements.isEnabled) {
+                "enabled" to { requirements.requireExistingComponent().isEnabled }
+            } else {
+                "disabled" to { !requirements.requireExistingComponent().isEnabled }
+            }
+
+            return createPredefinedFeedbackTest("The '${requirements.name}' component should be $desiredState") {
+                stateChecker()
+            }
+
+        }
+
+        return components.map(::generateIsEnabledTest)
+    }
+
+    fun <ComponentType : AbstractJComponentFixture<*, *, *>>
+            ComponentRequirements<ComponentType>.requireExistingComponent(): ComponentType {
+        return requireNotNull(this.suitableComponent) {
+            "Must check for the '${this.name}' component existence before this test"
+        }
+    }
+  learner_created: false
+- name: src/life/Universe.java
+  visible: true
+  text: |-
+    package life;
+
+    import java.io.IOException;
+    import java.util.Random;
+    import java.lang.Thread;
+    class Universe {
+        protected int N;
+        protected int S;
+        public static char[][] arr_curr;
+        public static char[][] arr_next;
+        public static int Alive = 0;
+
+        public Universe(int N, int S) {
+            this.N = N;
+            this.S = S;
+        }
+
+        public void CreateUniverse(int N, int S) {
+            Random random = new Random(S);
+            arr_curr = new char[N][N];
+            arr_next = new char[N][N];
+            for(int i = 0; i < N; i++) {
+                for(int j = 0; j < N; j++) {
+                    if(random.nextBoolean()) {
+                        arr_curr[i][j] = 'O';
+                    }
+                    else {
+                        arr_curr[i][j] = ' ';
+                    }
+                }
+            }
+        }
+
+        public void printUniverse(char[][] arr) {
+            for(int i = 0; i < N; i++) {
+                for(int j = 0; j < N; j++) {
+                    System.out.print(arr[i][j]);
+                }
+                System.out.println();
+            }
+        }
+
+        public void loop (int n) throws IOException, InterruptedException {
+            int gen = 1;
+            System.out.println(gen);
+            if (n == 0) {
+                printUniverse(arr_curr);
+                aliveCounter();
+            }
+            else {
+                for (int i = 0; i < n; i++) {
+                    Algorithm.Algo(arr_curr, arr_next);
+                    swap();
+                    Alive = 0;
+                    aliveCounter();
+                    System.out.println("Generation #" + gen);
+                    System.out.println("Alive: " + Alive);
+                    printUniverse(arr_next);
+                    gen++;
+                   // clearScreen();
+                    Thread.sleep(1000);
+                }
+            }
+        }
+        public void swap(){
+            for(int i = 0; i < N; i++) {
+                System.arraycopy(arr_next[i], 0, arr_curr[i], 0, N);
+            }
+        }
+
+        public static void clearScreen() {
+            System.out.print("\033[H\033[2J");
+            System.out.flush();
+        }
+
+        public static void aliveCounter() {
+            for(int i = 0; i < arr_curr.length; i++) {
+                for(int j = 0; j < arr_curr.length; j++) {
+                    if(arr_curr[i][j] == 'O'){
+                        Alive++;
+                    }
+                }
+            }
+        }
+    }
+  learner_created: true
+- name: src/life/Algorithm.java
+  visible: true
+  text: |
+    package life;
+
+    public class Algorithm {
+        public static char N;
+        public static char S;
+        public static char E;
+        public static char W;
+        public static char NW;
+        public static char NE;
+        public static char SW;
+        public static char SE;
+
+        public static void Algo(char[][] array, char[][] next) {
+            for(int i = 0; i < array.length; i++){
+                int cnt = 0;
+                for(int j = 0; j < array.length; j++) {
+                    Check(array, i, j);
+                    cnt = Decision();
+                    //System.out.print(cnt + " ");
+                    if(array[i][j] == 'O') {
+                        if(cnt < 2 || cnt > 3) {
+                            next[i][j] = ' ';
+                        }
+                        else {
+                            next[i][j] = 'O';
+                        }
+                    }
+                    else {
+                        if(cnt == 3) {
+                            next[i][j] = 'O';
+                        }
+                        else {
+                            next[i][j] = ' ';
+                        }
+                    }
+                }
+            }
+        }
+
+        public static void Check(char[][] array, int i, int j) {
+            if(i == 0) {
+                if(j == 0) {
+                    N = array[array.length - 1][0];
+                    NE = array[array.length - 1][1];
+                    E = array[0][1];
+                    S = array[1][0];
+                    SE = array[1][1];
+                    W = array[0][array.length - 1];
+                    SW = array[1][array.length - 1];
+                    NW = array[array.length - 1][array.length - 1];
+                }
+                else {
+                    if(j == array.length - 1) {
+                        N = array[array.length - 1][array.length - 1];
+                        NW = array[array.length - 1][array.length - 2];
+                        NE = array[array.length -1][0];
+                        E = array[0][0];
+                        SE = array[1][0];
+                        W = array[0][array.length - 2];
+                        SW = array[1][array.length - 2];
+                        S = array[1][array.length - 1];
+                    }
+                    else {
+                        N = array[array.length - 1][j];
+                        NW = array[array.length - 1][j -1];
+                        NE = array[array.length - 1][j + 1];
+                        W = array[i][j - 1];
+                        E = array[i][j + 1];
+                        SW = array[i + 1][j - 1];
+                        S = array[i + 1][j];
+                        SE = array[i + 1][j + 1];
+                    }
+                }
+            }
+            else {
+                if(i == array.length - 1) {
+                    if(j == 0) {
+                        N = array[array.length - 2][0];
+                        NE = array[array.length - 2][1];
+                        E = array[array.length - 1][1];
+                        W = array[array.length - 1][array.length - 1];
+                        NW = array[array.length - 2][array.length - 1];
+                        S = array[0][0];
+                        SE = array[0][1];
+                        SW = array[0][array.length - 1];
+                    }
+                    else {
+                        if(j == array.length - 1) {
+                            N = array[array.length - 2][array.length - 1];
+                            NW = array[array.length - 2][array.length - 2];
+                            W = array[array.length - 1][array.length - 2];
+                            NE = array[array.length - 2][0];
+                            E = array[array.length - 1][0];
+                            SE = array[0][0];
+                            SW = array[0][array.length - 2];
+                            S = array[0][array.length - 1];
+                        }
+                        else {
+                            NW = array[array.length - 2][j - 1];
+                            N = array[array.length - 2][j];
+                            NE = array[array.length - 2][j + 1];
+                            W = array[array.length - 1][j - 1];
+                            E = array[array.length - 1][j + 1];
+                            SW = array[0][j - 1];
+                            S = array[0][j];
+                            SE = array[0][j + 1];
+                        }
+                    }
+                }
+                else {
+                    if(j == 0) {
+                        N = array[i - 1][j];
+                        NE = array[i - 1][j + 1];
+                        E = array[i][j + 1];
+                        SE = array[i + 1][j + 1];
+                        S = array[i + 1][j];
+                        NW = array[i - 1][array.length - 1];
+                        W = array[i][array.length - 1];
+                        SW = array[i + 1][array.length - 1];
+                    }
+                    else {
+                        if(j == array.length - 1) {
+                            N = array[i - 1][j];
+                            S = array[i + 1][j];
+                            SW = array[i + 1][j - 1];
+                            W = array[i][j - 1];
+                            NW = array[i - 1][j - 1];
+                            NE = array[i - 1][0];
+                            E = array[i][0];
+                            SE = array[i + 1][0];
+                        }
+                        else {
+                            N = array[i - 1][j];
+                            NE = array[i - 1][j + 1];
+                            E = array[i][j + 1];
+                            SE = array[i + 1][j + 1];
+                            S = array[i + 1][j];
+                            SW = array[i + 1][j - 1];
+                            W = array[i][j - 1];
+                            NW = array[i - 1][j - 1];
+                        }
+                    }
+                }
+            }
+        }
+
+        public static int Decision() {
+            int count = 0;
+            if(N == 'O') {
+                count++;
+            }
+            if(S == 'O') {
+                count++;
+            }
+            if(E == 'O') {
+                count++;
+            }
+            if(W == 'O') {
+                count++;
+            }
+            if(NW == 'O') {
+                count++;
+            }
+            if(NE == 'O') {
+                count++;
+            }
+            if(SW == 'O') {
+                count++;
+            }
+            if(SE == 'O') {
+                count++;
+            }
+            return count;
+        }
+
+    }
+  learner_created: true
+- name: src/life/GameOfLife.java
+  visible: true
+  learner_created: true
+feedback_link: https://hyperskill.org/projects/54/stages/298/implement
+status: Solved
+feedback:
+  message: Congratulations! Continue on <a href="https://hyperskill.org/projects/54/stages/298/implement">JetBrains
+    Academy</a>
+  time: Tue, 11 Aug 2020 14:29:40 UTC
+record: 4
